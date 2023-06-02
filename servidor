@@ -33,6 +33,13 @@ def dados_recebidos(conexao, dados):
         if command.upper() == b'PING':
             conexao.enviar(b':server PONG server :' + payload + b'\r\n')
 
+        if command.upper()  == b'NICK':
+            if validar_nome(payload):
+                conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
+                conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
+            else:
+                conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
+
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
