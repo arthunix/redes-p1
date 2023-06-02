@@ -45,13 +45,13 @@ def dados_recebidos(conexao, dados):
                         conexao.enviar(b':'+ oldNick + b' NICK '+ payload +b'\r\n')
                     else:
                         conexao.enviar(b':server 433 '+ oldNick + b' ' + payload + b' :Nickname is already in use\r\n')
-
-                if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
-                    servidor.nick_db[payload] = conexao
-                    conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
-                    conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
                 else:
-                    conexao.enviar(b':server 433 * ' + payload + b' :Nickname is already in use\r\n')
+                    if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
+                        servidor.nick_db[payload] = conexao
+                        conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
+                        conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
+                    else:
+                        conexao.enviar(b':server 433 * ' + payload + b' :Nickname is already in use\r\n')
             else:
                 conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
 
