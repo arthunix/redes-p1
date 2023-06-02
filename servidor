@@ -13,19 +13,30 @@ def sair(conexao):
 
 
 def dados_recebidos(conexao, dados):
+    dados = conexao.dados_residuais + dados
+    conexao.dados_residuais = b''
+
     if dados == b'':
         return sair(conexao)
     print(conexao, dados)
 
-    command, payload = dados.split(b' ', 1)
-    payload = payload.split(b'\r\n')[0]
-    
-    if command.upper() == b'PING':
-        conexao.enviar(b':server PONG server :' + payload + b'\r\n')
+    if not dados.endswith(b'\r\n'):
+        #if the string does not ends with \r\n it means that the remainning caracters must be used in the next instruction
+        dados = list(filter((b'').__ne__, dados.split(b'\r\n')))
+        conexao.dados_residuais += dados.pop(-1)
+    else:
+        dados = list(filter((b'').__ne__, dados.split(b'\r\n')))
+
+    for data in dados:
+        command, payload = data.split(b' ', 1)
+
+        if command.upper() == b'PING':
+            conexao.enviar(b':server PONG server :' + payload + b'\r\n')
 
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
+    conexao.dados_residuais = b''
     conexao.registrar_recebedor(dados_recebidos)
 
 
