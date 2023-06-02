@@ -34,19 +34,33 @@ def dados_recebidos(conexao, dados):
             conexao.enviar(b':server PONG server :' + payload + b'\r\n')
 
         if command.upper()  == b'NICK':
+            pUpper = payload.upper()
             if validar_nome(payload):
-                conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
-                conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
+                if conexao in servidor.nick_db.values():
+                    oldNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
+
+                    if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
+                        servidor.nick_db[payload] = conexao
+                        del servidor.nick_db[oldNick]
+                        conexao.enviar(b':'+ oldNick + b' NICK '+ payload +b'\r\n')
+                    else:
+                        conexao.enviar(b':server 433 '+ oldNick + b' ' + payload + b' :Nickname is already in use\r\n')
+
+                if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
+                    servidor.nick_db[payload] = conexao
+                    conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
+                    conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
+                else:
+                    conexao.enviar(b':server 433 * ' + payload + b' :Nickname is already in use\r\n')
             else:
                 conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
-
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
     conexao.dados_residuais = b''
     conexao.registrar_recebedor(dados_recebidos)
 
-
 servidor = Servidor(6667)
+servidor.nick_db = dict()
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
