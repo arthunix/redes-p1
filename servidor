@@ -34,7 +34,7 @@ def dados_recebidos(conexao, dados):
         if command.upper() == b'PING':
             conexao.enviar(b':server PONG server :' + payload + b'\r\n')
 
-        if command.upper()  == b'NICK':
+        if command.upper() == b'NICK':
             pUpper = payload.upper()
             if validar_nome(payload):
                 if conexao in servidor.nick_db.values():
@@ -56,14 +56,33 @@ def dados_recebidos(conexao, dados):
             else:
                 conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
 
+        if command.upper() == b'PRIVMSG':
+                destination, content = payload.split(b' :', 1)
+                remetenteNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
+                dUpper = destination.upper()
+                
+                if destination.startswith(b'#') and dUpper in servidor.chan_db.keys(): 
+                    for i in servidor.chan_db[dUpper]:
+                        if servidor.chan_db[dUpper] != conexao:
+                            servidor.chan_db[dUpper].enviar(b':' + remetenteNick + b' PRIVMSG ' + destination + b' :' + content + b'\r\n')
+                else:
+                    destinationConnection = None
+                    for i in servidor.conexoes:
+                        if list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(i)].upper() == dUpper:
+                            destinationConnection = i
+                    if destinationConnection != None:
+                        destinationConnectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(destinationConnection)]
+                        destinationConnection.enviar(b':' + remetenteNick + b' PRIVMSG ' + destinationConnectionNick + b' :' + content + b'\r\n')
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
+    servidor.conexoes.append(conexao)
     conexao.dados_residuais = b''
     conexao.registrar_recebedor(dados_recebidos)
 
 servidor = Servidor(6667)
 servidor.nick_db = dict()
 servidor.chan_db = dict()
+servidor.conexoes = list()
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
