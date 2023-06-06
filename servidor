@@ -57,35 +57,35 @@ def dados_recebidos(conexao, dados):
                 conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
 
         if command.upper() == b'PRIVMSG':
-                destination, content = payload.split(b' :', 1)
-                remetenteNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
-                dUpper = destination.upper()
-                
-                if destination.startswith(b'#') and dUpper in servidor.chan_db.keys(): 
-                    for i in servidor.chan_db[dUpper]:
-                        if servidor.chan_db[dUpper][i] != conexao:
-                            servidor.chan_db[dUpper][i].enviar(b':' + remetenteNick + b' PRIVMSG ' + destination + b' :' + content + b'\r\n')
-                else:
-                    destinationConnection = None
-                    for i in servidor.conn_db:
-                        if list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(i)].upper() == dUpper:
-                            destinationConnection = i
-                    if destinationConnection != None:
-                        destinationConnectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(destinationConnection)]
-                        destinationConnection.enviar(b':' + remetenteNick + b' PRIVMSG ' + destinationConnectionNick + b' :' + content + b'\r\n')
+            destination, content = payload.split(b' :', 1)
+            remetenteNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
+            dUpper = destination.upper()
+
+            if destination.startswith(b'#') and dUpper in servidor.chan_db.keys(): 
+                for i in servidor.chan_db[dUpper]:
+                    if servidor.chan_db[dUpper][i] != conexao:
+                        servidor.chan_db[dUpper][i].enviar(b':' + remetenteNick + b' PRIVMSG ' + destination + b' :' + content + b'\r\n')
+            else:
+                destinationConnection = None
+                for i in servidor.conn_db:
+                    if list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(i)].upper() == dUpper:
+                        destinationConnection = i
+                if destinationConnection != None:
+                    destinationConnectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(destinationConnection)]
+                    destinationConnection.enviar(b':' + remetenteNick + b' PRIVMSG ' + destinationConnectionNick + b' :' + content + b'\r\n')
 
         if command.upper() == b'JOIN':
-                if payload.startswith(b'#') and validar_nome(payload[1:]):
-                    pUpper = payload.upper()
+            if payload.startswith(b'#') and validar_nome(payload[1:]):
+                pUpper = payload.upper()
 
-                    connectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
+                connectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
 
-                    if pUpper not in (upp.upper() for upp in list(servidor.chan_db.keys())):
+                if pUpper not in (upp.upper() for upp in list(servidor.chan_db.keys())):
                         servidor.chan_db[pUpper] = dict()
-                    servidor.chan_db[pUpper][connectionNick] = conexao 
-                    
-                    for i in servidor.chan_db[pUpper]:
-                        servidor.chan_db[pUpper][i].enviar(b':' + connectionNick + b' JOIN :' + payload + b'\r\n')
+                servidor.chan_db[pUpper][connectionNick] = conexao 
+
+                for i in servidor.chan_db[pUpper]:
+                    servidor.chan_db[pUpper][i].enviar(b':' + connectionNick + b' JOIN :' + payload + b'\r\n')
 
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
