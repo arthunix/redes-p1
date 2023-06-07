@@ -87,6 +87,17 @@ def dados_recebidos(conexao, dados):
                 for i in servidor.chan_db[pUpper]:
                     servidor.chan_db[pUpper][i].enviar(b':' + connectionNick + b' JOIN :' + payload + b'\r\n')
 
+        if command.upper() == b'PART':
+            pIgnored = payload.split(b' ')[0]
+            pUpper = payload.split(b' ')[0].upper()
+
+            if pUpper.startswith(b'#') and pUpper in servidor.chan_db.keys():
+                connectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
+                if connectionNick in servidor.chan_db[pUpper].keys():
+                    for i in servidor.chan_db[pUpper]:
+                        servidor.chan_db[pUpper][i].enviar(b':' + connectionNick + b' PART ' + pIgnored + b'\r\n')
+                    del servidor.chan_db[pUpper][connectionNick]
+
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
     servidor.conn_db.append(conexao)
