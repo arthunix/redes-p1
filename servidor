@@ -3,13 +3,34 @@ import asyncio
 import re
 import sys
 from tcp import Servidor
+from pprint import pprint 
+from ast import literal_eval
 
-if sys.platform == 'win32': asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+DEBUG = 1
+
+#if sys.platform == 'win32': asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+def log(*args, **kwargs):
+    if DEBUG: pprint(*args, **kwargs)
+
 
 def validar_nome(nome):
     return re.match(br'^[a-zA-Z][a-zA-Z0-9_-]*$', nome) is not None
 
 def sair(conexao):
+    addresseeList = []
+    #for each channel in servidor    
+    for channel in servidor.chan_db:
+        servidor.chan_db[channel].pop(conexao.nick, None)
+        for i in servidor.chan_db[channel]:
+            addresseeList.append(servidor.chan_db[channel][i])
+        for j in addresseeList:
+            print(b':'+conexao.nick + b' QUIT' + b' :Connection closed\r\n')
+            print(j)
+            servidor.nick_db.pop(conexao.nick, None)
+            j.enviar(b':'+conexao.nick + b' QUIT' + b' :Connection closed\r\n')
+
+
+    
     print(conexao, 'conexão fechada')
     conexao.fechar()
 
@@ -21,6 +42,7 @@ def dados_recebidos(conexao, dados):
         return sair(conexao)
     print(conexao, dados)
 
+    #PASSO 2:
     if not dados.endswith(b'\r\n'):
         #if the string does not ends with \r\n it means that the remainning caracters must be used in the next instruction
         dados = list(filter((b'').__ne__, dados.split(b'\r\n')))
@@ -31,9 +53,10 @@ def dados_recebidos(conexao, dados):
     for data in dados:
         command, payload = data.split(b' ', 1)
 
+        #PASSO 1:
         if command.upper() == b'PING':
             conexao.enviar(b':server PONG server :' + payload + b'\r\n')
-
+        #PASSO 3 e 4:
         if command.upper() == b'NICK':
             pUpper = payload.upper()
             if validar_nome(payload):
@@ -43,19 +66,21 @@ def dados_recebidos(conexao, dados):
                     if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
                         servidor.nick_db[payload] = conexao
                         del servidor.nick_db[oldNick]
+                        conexao.nick = payload
                         conexao.enviar(b':'+ oldNick + b' NICK '+ payload +b'\r\n')
                     else:
                         conexao.enviar(b':server 433 '+ oldNick + b' ' + payload + b' :Nickname is already in use\r\n')
                 else:
                     if pUpper not in (upp.upper() for upp in list(servidor.nick_db.keys())):
                         servidor.nick_db[payload] = conexao
+                        conexao.nick = payload
                         conexao.enviar(b':server 001 ' + payload + b' :Welcome\r\n')
                         conexao.enviar(b':server 422 ' + payload + b' :MOTD File is missing\r\n')
                     else:
                         conexao.enviar(b':server 433 * ' + payload + b' :Nickname is already in use\r\n')
             else:
                 conexao.enviar(b':server 432 * ' + payload + b' :Erroneous nickname\r\n')
-
+        #PASSO 5:
         if command.upper() == b'PRIVMSG':
             destination, content = payload.split(b' :', 1)
             remetenteNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
@@ -73,7 +98,7 @@ def dados_recebidos(conexao, dados):
                 if destinationConnection != None:
                     destinationConnectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(destinationConnection)]
                     destinationConnection.enviar(b':' + remetenteNick + b' PRIVMSG ' + destinationConnectionNick + b' :' + content + b'\r\n')
-
+        #PASSO 6:
         if command.upper() == b'JOIN':
             if payload.startswith(b'#') and validar_nome(payload[1:]):
                 pUpper = payload.upper()
@@ -98,10 +123,10 @@ def dados_recebidos(conexao, dados):
                     send = residuals    
                 conexao.enviar(send + b'\r\n' + b':server 366 ' + connectionNick + b' ' + payload + b' :End of /NAMES list.\r\n')
 
-
+        #PASSO 7:
         if command.upper() == b'PART':
             pIgnored = payload.split(b' ')[0]
-            pUpper = payload.split(b' ')[0].upper()
+            pUpper = payload.split(b' ')[0].upper() #channel name, suposed to be a servidor.chan_db.key
 
             if pUpper.startswith(b'#') and pUpper in servidor.chan_db.keys():
                 connectionNick = list(servidor.nick_db.keys())[list(servidor.nick_db.values()).index(conexao)]
@@ -114,11 +139,13 @@ def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
     servidor.conn_db.append(conexao)
     conexao.dados_residuais = b''
+    conexao.nick = b''
     conexao.registrar_recebedor(dados_recebidos)
 
 servidor = Servidor(6667)
 servidor.nick_db = dict()
-servidor.chan_db = dict()
+servidor.chan_db = dict()#key: channelName, value: tcp.Conexao
 servidor.conn_db = list()
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
+print(servidor.chan_db)
